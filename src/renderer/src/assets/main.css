@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+/* 1. Force the app to fill the entire Windows window */
+html, body, #root {
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Stops accidental scrollbars */
+}
+
+/* 2. Ensure everything uses the dark background and white text */
+body {
+  background-color: #0f172a; /* Deep Slate */
+  color: white;
+  font-family: sans-serif;
+}
+
+/* 3. This is the fix for the 'bunching' - it tells the React container to expand */
+#root {
+  display: block; 
+  height: 100%;
+  width: 100%;
+}
