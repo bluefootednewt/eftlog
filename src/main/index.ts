@@ -11,8 +11,10 @@ const DB_PATH = path.join(app.getPath('userData'), 'books.json')
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 1280,
+    height: 720,
+    title: "EftLog",
+    icon: path.join(__dirname, '../resources/icon.ico'),
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),

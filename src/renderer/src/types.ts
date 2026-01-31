@@ -5,12 +5,11 @@ export interface Book {
   coverImage: string;
   status: 'Reading' | 'Planned' | 'Finished' | 'Dropped';
   
-  // Custom tracking for a QA-minded reader
   source: 'Physical' | 'Kindle' | 'Humble Bundle' | 'Library' | 'Other'; 
-  format: 'Novel' | 'Graphic Novel' | 'Magazine'; // For your interest in 'Debug' and 'Lackadaisy'
+  format: 'Novel' | 'Graphic Novel' | 'Magazine';
   
   progress: number; 
   rating: number;   
-  vibe: string[];   // e.g., "Cerebral", "Indie aesthetic"
+  vibe: string[];
   notes: string;
 }

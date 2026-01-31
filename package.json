@@ -1,9 +1,9 @@
 {
   "name": "eft-log",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "An Electron application with React and TypeScript",
-  "main": "./out/main/index.js",
-  "author": "example.com",
+  "main": "out/main/index.js",
+  "author": "https://github.com/bluefootednewt",
   "homepage": "https://electron-vite.org",
   "scripts": {
     "format": "prettier --write .",
@@ -11,7 +11,8 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "start": "electron-vite preview",
+    "start": "electron .",
+    "dist": "electron-builder",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
@@ -36,7 +37,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "electron": "^39.2.6",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.4.0",
     "electron-vite": "^5.0.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react": "^7.37.5",
@@ -47,5 +48,23 @@
     "react-dom": "^19.2.1",
     "typescript": "^5.9.3",
     "vite": "^7.2.6"
+  },
+  "build": {
+    "appId": "com.bluefootednewt.eftlog",
+    "productName": "EftLog",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "resources/icon.ico",
+      "artifactName": "${productName}_${version}_Portable.${ext}"
+    },
+    "files": [
+      "out/**/*",
+      "resources/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ]
   }
 }

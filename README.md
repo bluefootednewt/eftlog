@@ -27,6 +27,14 @@ EftLog is a streamlined desktop application built with **Electron** and **React*
 * [Node.js](https://nodejs.org/) (v16 or higher)
 * A Google Books API Key
 
+## 📥 Downloads
+
+**Latest Release: [v0.1.0-alpha](https://github.com/bluefootednewt/eft-log/releases)**
+
+For the best experience, download the **Portable Executable**. No installation or Node.js required! 
+1. Download `EftLog_0.1.0_Portable.exe`.
+2. Run the file.
+
 ### Installation
 1.  **Clone the repository:**
     ```bash
