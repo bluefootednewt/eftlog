@@ -7,14 +7,15 @@ const api = {
   saveBook: (book) => ipcRenderer.invoke('save-book', book),
   getBooks: () => ipcRenderer.invoke('get-books'),
   deleteBook: (bookId) => ipcRenderer.invoke('delete-book', bookId),
-  saveAllBooks: (allBooks) => ipcRenderer.invoke('save-all-books', allBooks)
+  saveAllBooks: (allBooks) => ipcRenderer.invoke('save-all-books', allBooks),
+  saveConfig: (config) => ipcRenderer.send('save-config', config)
 }
 
 // Keep the rest of your file exactly as it is (the if/else block)
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
-    contextBridge.exposeInMainWorld('api', api) // This is where our functions get exposed
+    contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
     console.error(error)
   }

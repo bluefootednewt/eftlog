@@ -300,6 +300,9 @@ const App: React.FC = () => {
 
   const [isSearching, setIsSearching] = useState(false); 
 
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [apiKey, setApiKey] = useState(import.meta.env.VITE_GOOGLE_BOOKS_KEY || '');
+
   // Google Books API Key - stored in .env for privacy purposes
   const API_KEY = import.meta.env.VITE_GOOGLE_BOOKS_KEY;
 
@@ -435,7 +438,7 @@ const App: React.FC = () => {
           })}
         </nav>
 
-        {/* Version info at the very bottom */}
+        {/* Sidebar Bottom: Version & Settings */}
         <div style={{ marginTop: 'auto', paddingBottom: '10px', color: '#475569', fontSize: '12px' }}>
           v0.1.0-alpha • bluefootednewt
         </div>
@@ -525,11 +528,74 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {isSettingsOpen && (
+          <div style={modalOverlayStyle(isSettingsOpen)}>
+            <div style={{ ...modalContentStyle, width: '400px' }}>
+              <h2 style={{ color: '#34d399', marginTop: 0 }}>Settings</h2>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>
+                  Google Books API Key
+                </label>
+                <input 
+                  type="password" 
+                  value={apiKey} 
+                  onChange={(e) => setApiKey(e.target.value)} 
+                  style={inputStyle} 
+                  placeholder="Paste your API key here..."
+                />
+                <p style={{ fontSize: '11px', color: '#64748b', marginTop: '-10px' }}>
+                  Required for fetching book covers and metadata.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  onClick={() => setIsSettingsOpen(false)} 
+                  style={{ flex: 1, padding: '10px', borderRadius: '6px', backgroundColor: '#334155', color: 'white', border: 'none', cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+                <button 
+                  onClick={async () => {
+                    // If your bridge supports saving config:
+                    // @ts-ignore
+                    await window.api.saveConfig({ apiKey }); 
+                    setIsSettingsOpen(false);
+                  }} 
+                  style={{ flex: 1, padding: '10px', borderRadius: '6px', backgroundColor: '#10b981', color: '#020617', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
           <h2 style={{ fontSize: '32px', margin: 0 }}>{activeTab}</h2>
           
           {/* Wrap buttons in a container to keep them grouped together */}
           <div style={{ display: 'flex', gap: '10px' }}>
+            {/* NEW: Settings Button */}
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              style={{ 
+                backgroundColor: '#1e293b', 
+                color: '#34d399', 
+                padding: '10px 15px', 
+                borderRadius: '5px', 
+                fontWeight: 'bold', 
+                border: '1px solid #34d399', 
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              ⚙ Settings
+            </button>
+
             <button 
               onClick={() => setIsBulkModalOpen(true)}
               style={{ 
@@ -544,6 +610,7 @@ const App: React.FC = () => {
             >
               Bulk Add
             </button>
+
             <button 
               onClick={() => {
                 setEditingBookId(null);
