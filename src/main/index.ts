@@ -7,8 +7,25 @@ import path from 'path'
 
 // Path to your database file in the user's local folder
 const DB_PATH = path.join(app.getPath('userData'), 'books.json')
+const userDataPath = app.getPath('userData')
+const configPath = path.join(userDataPath, 'config.json')
 
-function createWindow(): void {
+function createWindows(): void {
+  // 1. Create the Splash Screen (Frameless and Transparent)
+  const splash = new BrowserWindow({
+    width: 600,
+    height: 600,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    show: false,
+    skipTaskbar: true 
+  })
+
+  // Points to the compiled version in the 'out' folder
+  splash.loadFile(join(__dirname, '../renderer/splash.html'))
+  splash.once('ready-to-show', () => splash.show())
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1280,
@@ -24,10 +41,6 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-  })
-
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -40,6 +53,17 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  // 3. The Hand-off
+  mainWindow.once('ready-to-show', () => {
+    // Give the splash at least 2 seconds of glory
+    setTimeout(() => {
+      splash.close()
+      mainWindow.show()
+      // Force focus so fields aren't locked
+      mainWindow.focus() 
+    }, 2000)
+  })
 
   ipcMain.handle('save-book', async (_event, book) => {
     // 1. Explicitly tell TypeScript this is an array of objects
@@ -76,7 +100,7 @@ function createWindow(): void {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  electronApp.setAppUserModelId('com.bluefootednewt.eftlog')
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -88,12 +112,12 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
-  createWindow()
+  createWindows()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) createWindows()
   })
 })
 
@@ -128,5 +152,32 @@ ipcMain.handle('save-all-books', async (_event, allBooks) => {
   } catch (error) {
     console.error("Failed to save all books", error)
     return { success: false }
+  }
+})
+
+ipcMain.on('save-config', (_event, config) => {
+  try {
+    // This ensures the directory exists before trying to write to it
+    if (!fs.existsSync(userDataPath)) {
+      fs.mkdirSync(userDataPath, { recursive: true });
+    }
+    
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('Failed to save config:', error);
+  }
+});
+
+ipcMain.handle('get-config', async () => {
+  try {
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, 'utf-8')
+      return JSON.parse(data)
+    }
+    // Return empty defaults if file doesn't exist yet
+    return { apiKey: '', sortBy: 'Newest' }
+  } catch (error) {
+    console.error('Failed to read config:', error)
+    return { apiKey: '', sortBy: 'Newest' }
   }
 })

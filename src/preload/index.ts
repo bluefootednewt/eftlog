@@ -8,6 +8,7 @@ const api = {
   getBooks: () => ipcRenderer.invoke('get-books'),
   deleteBook: (bookId) => ipcRenderer.invoke('delete-book', bookId),
   saveAllBooks: (allBooks) => ipcRenderer.invoke('save-all-books', allBooks),
+  getConfig: () => ipcRenderer.invoke('get-config'), // Add this line
   saveConfig: (config) => ipcRenderer.send('save-config', config)
 }
 

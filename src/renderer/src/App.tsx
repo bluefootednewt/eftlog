@@ -38,12 +38,36 @@ const App: React.FC = () => {
   }
 
   useEffect(() => {
-    const loadData = async () => {
-      // @ts-ignore
-      const savedBooks = await window.api.getBooks()
-      setBooks(savedBooks)
+    const initializeApp = async () => {
+      try {
+        // 1. Fetch Config (API Key + Sort Preference)
+        // @ts-ignore
+        const config = await window.api.getConfig()
+        if (config) {
+          if (config.apiKey) setApiKey(config.apiKey)
+          if (config.sortBy) setSortBy(config.sortBy)
+        }
+
+        // 2. Fetch Books
+        // @ts-ignore
+        const savedBooks = await window.api.getBooks()
+        // Ensure we have an array even if the file is empty/missing
+        setBooks(Array.isArray(savedBooks) ? savedBooks : [])
+        
+      } catch (error) {
+        console.error("Initialization failed:", error)
+        // Fallback: Still try to get books even if config fails
+        try {
+          // @ts-ignore
+          const savedBooks = await window.api.getBooks()
+          setBooks(Array.isArray(savedBooks) ? savedBooks : [])
+        } catch (innerError) {
+          console.error("Total failure to load books:", innerError)
+        }
+      }
     }
-    loadData()
+
+    initializeApp()
   }, [])
   
   const [books, setBooks] = useState<any[]>([]) // List of books
@@ -352,6 +376,17 @@ const App: React.FC = () => {
     }
   };
 
+  // When the user changes the dropdown, save it immediately
+  const handleSortChange = async (newSort: string) => {
+    setSortBy(newSort);
+    try {
+      // @ts-ignore
+      await window.api.saveConfig({ apiKey, sortBy: newSort });
+    } catch (err) {
+      console.error("Failed to save sort preference:", err);
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -387,12 +422,6 @@ const App: React.FC = () => {
     setBulkText('');
     setIsBulkModalOpen(false);
   };
-
-  useEffect(() => {
-    const closeMenu = () => setOpenMenuId(null);
-    window.addEventListener('click', closeMenu);
-    return () => window.removeEventListener('click', closeMenu);
-  }, []);
 
   return (
     <div style={{ display: 'flex', backgroundColor: '#0f172a', minHeight: '100vh' }}>
@@ -669,7 +698,7 @@ const App: React.FC = () => {
             </label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => handleSortChange(e.target.value)}
               style={{
                 padding: '8px 12px 8px 12px',
                 borderRadius: '8px',
