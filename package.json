@@ -1,7 +1,7 @@
 {
   "name": "eft-log",
   "productName": "EftLog",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "An Electron application with React and TypeScript",
   "main": "out/main/index.js",
   "author": "https://github.com/bluefootednewt",

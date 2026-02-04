@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, protocol } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -13,7 +13,7 @@ const configPath = path.join(userDataPath, 'config.json')
 function createWindows(): void {
   // 1. Create the Splash Screen (Frameless and Transparent)
   const splash = new BrowserWindow({
-    width: 600,
+    width: 1000,
     height: 600,
     transparent: true,
     frame: false,
@@ -99,6 +99,27 @@ function createWindows(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  
+  protocol.handle('atom', async (request) => {
+    try {
+      // 1. Strip 'atom://' or 'atom:///'
+      const url = new URL(request.url);
+      let filePath = decodeURIComponent(url.pathname);
+      
+      // 2. On Windows, URL.pathname often leaves a leading slash before the drive letter (e.g. /C:/)
+      // We need to strip that leading slash for fs.readFileSync
+      if (process.platform === 'win32' && filePath.startsWith('/')) {
+        filePath = filePath.slice(1);
+      }
+
+      const data = fs.readFileSync(filePath);
+      return new Response(data);
+    } catch (error) {
+      console.error("Protocol error:", error);
+      return new Response("Not Found", { status: 404 });
+    }
+  });
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.bluefootednewt.eftlog')
 
@@ -180,4 +201,17 @@ ipcMain.handle('get-config', async () => {
     console.error('Failed to read config:', error)
     return { apiKey: '', sortBy: 'Newest' }
   }
+})
+
+ipcMain.handle('select-image', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [{ name: 'Images', extensions: ['jpg', 'png', 'gif', 'webp'] }]
+  })
+
+  if (!result.canceled && result.filePaths.length > 0) {
+    // We return the path so React can show the preview
+    return result.filePaths[0]
+  }
+  return null
 })

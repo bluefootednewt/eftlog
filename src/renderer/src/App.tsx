@@ -171,6 +171,25 @@ const App: React.FC = () => {
     height: '100vh'        // Caps the container at viewport height to force internal scroll
   }
 
+  const statCardStyle: React.CSSProperties = {
+    backgroundColor: '#1e293b',
+    padding: '20px',
+    borderRadius: '12px',
+    border: '1px solid #334155',
+    textAlign: 'center'
+  };
+
+  const authorCounts = books.reduce((acc: {[key: string]: number}, b) => {
+    if (b.author) {
+      acc[b.author] = (acc[b.author] || 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  const topAuthors = Object.entries(authorCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3);
+
   const buttonStyle = (tab: string): React.CSSProperties => ({
     display: 'block',
     width: '100%',
@@ -343,30 +362,20 @@ const App: React.FC = () => {
       
       if (data.items && data.items.length > 0) {
         const volumeInfo = data.items[0].volumeInfo;
-        
-        // Potential data from API
-        const apiAuthor = volumeInfo.authors ? volumeInfo.authors[0] : '';
-        const thumbnail = volumeInfo.imageLinks?.thumbnail || volumeInfo.imageLinks?.smallThumbnail;
-        const pages = volumeInfo.pageCount || 0;
-        const apiSeries = volumeInfo.seriesInfo?.volumeSeries?.[0]?.seriesId || "";
-        const apiOrder = volumeInfo.seriesInfo?.volumeSeries?.[0]?.seriesBookIndex || 1;
-        
-        const secureThumbnail = thumbnail?.replace('http://', 'https://');
+        const thumbnail = volumeInfo.imageLinks?.thumbnail?.replace('http://', 'https://');
         
         setFormData(prev => ({ 
           ...prev, 
-          // 1. Fill author only if currently empty
-          author: prev.author || apiAuthor,
+          author: prev.author || (volumeInfo.authors ? volumeInfo.authors[0] : ''),
+          // GUARD: Only update coverUrl if it's currently empty or starts with 'https' (API-provided)
+          // If it starts with 'file://', it's a manual upload and we leave it alone.
+          coverUrl: (prev.coverUrl && prev.coverUrl.startsWith('file://')) 
+            ? prev.coverUrl 
+            : (thumbnail || prev.coverUrl),
           
-          // 2. Fill series only if currently empty
-          series: prev.series || apiSeries,
-          
-          // 3. Always pull cover and pages as they are harder to find manually
-          coverUrl: secureThumbnail || prev.coverUrl,
-          totalPages: prev.totalPages || pages,
-          
-          // 4. Update order only if series was empty or if order is 1
-          seriesOrder: prev.series ? prev.seriesOrder : apiOrder
+          totalPages: prev.totalPages || volumeInfo.pageCount || 0,
+          series: prev.series || volumeInfo.seriesInfo?.volumeSeries?.[0]?.seriesId || "",
+          seriesOrder: prev.series ? prev.seriesOrder : (volumeInfo.seriesInfo?.volumeSeries?.[0]?.seriesBookIndex || 1)
         }));
       }
     } catch (error) {
@@ -423,6 +432,16 @@ const App: React.FC = () => {
     setIsBulkModalOpen(false);
   };
 
+  const stats = {
+    totalBooks: books.length,
+    finishedBooks: books.filter(b => b.status === 'Finished').length,
+    plannedBooks: books.filter(b => b.status === 'Planned').length,
+    readingBooks: books.filter(b => b.status === 'Reading').length,
+    totalPagesRead: books.reduce((acc, b) => acc + (b.currentPage || 0), 0),
+    averageEnjoyment: books.filter(b => b.enjoyment > 0)
+      .reduce((acc, b, _, arr) => acc + b.enjoyment / arr.length, 0).toFixed(1)
+  };
+
   return (
     <div style={{ display: 'flex', backgroundColor: '#0f172a', minHeight: '100vh' }}>
       
@@ -465,11 +484,32 @@ const App: React.FC = () => {
               </button>
             );
           })}
+
+          <div style={{ margin: '20px 0', borderTop: '1px solid #1e293b' }} />
+
+          <button
+            onClick={() => {
+              setActiveTab('Stats');
+              setSearchQuery('');
+            }}
+            style={{
+              ...buttonStyle('Stats'),
+              backgroundColor: activeTab === 'Stats' ? '#10b981' : 'transparent',
+              border: activeTab === 'Stats' ? 'none' : '1px solid #10b981',
+              color: activeTab === 'Stats' ? '#020617' : '#10b981',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            <span>📊</span>
+            <span>Library Stats</span>
+          </button>
         </nav>
 
         {/* Sidebar Bottom: Version & Settings */}
         <div style={{ marginTop: 'auto', paddingBottom: '10px', color: '#475569', fontSize: '12px' }}>
-          v0.1.0-alpha • bluefootednewt
+          v0.2.0-alpha • bluefootednewt
         </div>
       </aside>
 
@@ -666,314 +706,374 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* View Controls: Search & Sort */}
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '10px',
-          marginBottom: '30px' 
-        }}>
-          
-          {/* Search Bar */}
-          <input 
-            type="text"
-            placeholder={`Search in ${activeTab}...`}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 20px',
-              borderRadius: '8px',
-              border: '1px solid #334155',
-              backgroundColor: '#1e293b',
-              color: 'white',
-              fontSize: '14px'
-            }}
-          />
-
-          {/* Sort Dropdown Row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <label style={{ fontSize: '13px', color: '#94a3b8', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
-              Sort By:
-            </label>
-            <select
-              value={sortBy}
-              onChange={(e) => handleSortChange(e.target.value)}
-              style={{
-                padding: '8px 12px 8px 12px',
-                borderRadius: '8px',
-                border: '1px solid #334155',
-                backgroundColor: '#1e293b',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '13px',
-                minWidth: '160px',
-                appearance: 'none'
-              }}
-            >
-              <option value="Newest">Date Added</option>
-              <option value="Title">Title (A-Z)</option>
-              <option value="Author">Author (A-Z)</option>
-              <option value="Progress">Progress %</option>
-              <option value="Series">Series</option>
-            </select>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '25px' }}>
-          {books
-            .filter(b => b.status === activeTab)
-            .filter(b => 
-              b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-              b.author.toLowerCase().includes(searchQuery.toLowerCase())
-            ).sort((a, b) => {
-              if (sortBy === 'Title') {
-                return a.title.localeCompare(b.title);
-              }
-              if (sortBy === 'Author') {
-                return a.author.localeCompare(b.author);
-              }
-              if (sortBy === 'Progress') {
-                const progA = a.totalPages > 0 ? a.currentPage / a.totalPages : 0;
-                const progB = b.totalPages > 0 ? b.currentPage / b.totalPages : 0;
-                return progB - progA; // Highest progress first
-              }
-              if (sortBy === 'Series') {
-                if (a.series === b.series) {
-                  return a.seriesOrder - b.seriesOrder;
-                }
-                return (a.series || '').localeCompare(b.series || '');
-              }
-              // Default: 'Newest' (assuming ID is based on timestamp)
-              return parseInt(b.id) - parseInt(a.id);
-            })
-            .map(book => (
-            <div 
-              key={book.id} 
-              style={{ 
-                backgroundColor: '#1e293b', 
-                borderRadius: '8px', 
-                border: '1px solid #334155', 
-                position: 'relative',
-                display: 'flex', // New flex layout
-                overflow: 'hidden',
-                minHeight: '180px'
-              }}
-            >
-
-              {/* Left: Cover Art */}
-              <div style={{ width: '110px', height: '176px', backgroundColor: '#0f172a', flexShrink: 0 }}>
-                {book.coverUrl ? (
-                  <img 
-                    src={book.coverUrl} 
-                    referrerPolicy="no-referrer"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                    alt={book.title}
-                  />
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#334155', fontSize: '10px' }}>
-                    No Cover
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Content */}
-              <div style={{ flex: 1, padding: '15px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ marginBottom: '10px' }}>
-                  <h3 style={{ margin: '0 0 5px 0', fontSize: '18px' }}>{book.title}</h3>
-                  
-                  {/* Series Indicator: Below Title, Above Author */}
-                  {book.series && (
-                    <p style={{ 
-                      margin: '0 0 5px 0', 
-                      fontSize: '11px', 
-                      color: '#34d399', 
-                      fontWeight: 'bold',
-                      textTransform: 'uppercase', 
-                      letterSpacing: '0.5px' 
-                    }}>
-                      {book.series} {book.seriesOrder ? `— Vol. ${book.seriesOrder}` : ''}
-                    </p>
-                  )}
-                  
-                  <p style={{ margin: 0, color: '#94a3b8', fontSize: '13px' }}>{book.author}</p>
-                </div>
-              
-                {/* Sentiment Badge */}
-                {book.sentiment && (
-                  <span style={{ 
-                    fontSize: '10px', 
-                    padding: '2px 8px', 
-                    borderRadius: '10px', 
-                    backgroundColor: '#334155',
-                    color: book.sentiment === 'Loved' ? '#f472b6' : '#94a3b8',
-                    display: 'inline-block', // Ensures it only takes required width
-                    width: 'fit-content'
-                  }}>
-                    {book.sentiment}
-                  </span>
-                )}
-                {/* Inside the book card, below the author/sentiment */}
-                {activeTab === 'Finished' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px', fontSize: '10px', color: '#64748b' }}>
-                    <span>⭐ ENJ: {book.enjoyment}</span>
-                    <span>❤️ EMO: {book.emotionalImpact}</span>
-                    <span>💪 EFF: {book.effort}</span>
-                    <span>🔄 RRD: {book.rereadPotential}</span>
-                  </div>
-                )}
-                {/* The Delete Button */}
-                {/* Right-aligned Ellipses Menu */}
-                <div style={{ position: 'absolute', top: '10px', right: '10px' }} onClick={(e) => e.stopPropagation()}>
-                  <button 
-                    onClick={() => setOpenMenuId(openMenuId === book.id ? null : book.id)}
-                    style={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      color: '#94a3b8', 
-                      fontSize: '20px', 
-                      cursor: 'pointer',
-                      padding: '0 5px',
-                      lineHeight: '1'
-                    }}
-                  >
-                    ⋮
-                  </button>
-
-                  {openMenuId === book.id && (
-                    <div style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: '25px',
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #334155',
-                      borderRadius: '6px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
-                      zIndex: 10,
-                      minWidth: '100px',
-                      overflow: 'hidden'
-                    }}>
-                      <button 
-                        onClick={() => { handleEdit(book); setOpenMenuId(null); }}
-                        style={{ 
-                          display: 'block', width: '100%', padding: '10px', textAlign: 'left',
-                          background: 'none', border: 'none', color: '#34d399', fontSize: '12px',
-                          fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        ✎ EDIT
-                      </button>
-                      <button 
-                        onClick={() => { 
-                          setBookToDelete(book); 
-                          setIsDeleteModalOpen(true); 
-                          setOpenMenuId(null); 
-                        }}
-                        style={{ 
-                          display: 'block', width: '100%', padding: '10px', textAlign: 'left',
-                          background: 'none', border: 'none', color: '#ef4444', fontSize: '12px',
-                          fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        🗑 DELETE
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div style={{ marginTop: '15px', borderTop: '1px solid #334155', paddingTop: '10px' }}>
-                  {activeTab === 'Planned' && (
-                    <button onClick={() => moveBook(book, 'Reading')} style={moveButtonStyle}>Start Reading →</button>
-                  )}
-                  {activeTab === 'Reading' && (
-                    <button 
-                      onClick={() => moveBook(book, 'Finished')} 
-                      style={{ 
-                        ...moveButtonStyle, 
-                        // Highlight logic
-                        border: book.currentPage >= book.totalPages && book.totalPages > 0 
-                          ? '2px solid #34d399' 
-                          : '1px solid #334155',
-                        boxShadow: book.currentPage >= book.totalPages && book.totalPages > 0 
-                          ? '0 0 10px rgba(52, 211, 153, 0.4)' 
-                          : 'none',
-                        transition: 'all 0.3s ease'
-                      }}
-                    >
-                      FINISH BOOK ✓
-                    </button>
-                  )}
-                  {/* Add a "Drop" option for anything not already dropped */}
-                  {activeTab !== 'Dropped' && activeTab !== 'Finished' && (
-                    <button 
-                      onClick={() => moveBook(book, 'Dropped')} 
-                      style={{ 
-                        ...moveButtonStyle, 
-                        color: '#ef4444', 
-                        borderColor: '#ef4444', // Red border
-                        backgroundColor: 'transparent' 
-                      }}
-                    >
-                      Drop
-                    </button>
-                  )}
-                  {activeTab === 'Reading' && (
-                    <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <button 
-                        onClick={() => {
-                          setProgressUpdateBook(book);
-                          setTempPage(book.currentPage || 0);
-                          setIsProgressModalOpen(true);
-                        }}
-                        style={{ background: '#1e293b', border: '1px solid #334155', color: '#34d399', borderRadius: '4px', cursor: 'pointer', padding: '4px 8px', fontSize: '10px', fontWeight: 'bold' }}
-                      >
-                        UPDATE PG
-                      </button>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                        Pg {book.currentPage} / {book.totalPages}
-                      </span>
-                    </div>
-                  )}
-                  {/* NEW: Re-read logic for Finished books */}
-                  {activeTab === 'Finished' && (
-                    <button onClick={() => moveBook(book, 'Reading')} style={{ ...moveButtonStyle, color: '#60a5fa' }}>Re-Read</button>
-                  )}
-                </div>
-              </div>
-              
-              {/* Progress Bar for Reading Tab */}
-              {activeTab === 'Reading' && book.totalPages > 0 && (
-                <div style={{ 
-                  position: 'absolute', 
-                  bottom: 0, 
-                  left: 0, 
-                  width: '100%', 
-                  height: '4px', 
-                  backgroundColor: '#334155', 
-                  borderRadius: '0 0 8px 8px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{ 
-                    width: `${Math.min((book.currentPage / book.totalPages) * 100, 100)}%`, 
-                    height: '100%', 
-                    backgroundColor: '#10b981',
-                    transition: 'width 0.5s ease-out' // The "animated" part
-                  }} />
-                </div>
-              )}
+        {activeTab === 'Stats' ? (
+          /* 📊 DASHBOARD VIEW */
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+            <div style={statCardStyle}>
+              <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '10px' }}>📚 Total Books</p>
+              <h3 style={{ fontSize: '28px', margin: 0 }}>{stats.totalBooks}</h3>
+            </div>
+            <div style={statCardStyle}>
+              <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '10px' }}>📖 Pages Read</p>
+              <h3 style={{ fontSize: '28px', margin: 0 }}>{stats.totalPagesRead.toLocaleString()}</h3>
+            </div>
+            <div style={statCardStyle}>
+              <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '10px' }}>⭐ Avg Enjoyment</p>
+              <h3 style={{ fontSize: '28px', margin: 0 }}>{stats.averageEnjoyment}</h3>
             </div>
             
-            
-          ))}
-          
-          {/* Show placeholder only if the current tab is empty */}
-          {books.filter(b => b.status === activeTab).length === 0 && (
-            <p style={{ color: '#94a3b8' }}>Your {activeTab} shelf is currently empty.</p>
-          )}
-        </div>
+            {/* Library Completion with Percentage */}
+            <div style={{ gridColumn: '1 / -1', backgroundColor: '#1e293b', padding: '20px', borderRadius: '12px', border: '1px solid #334155' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, color: '#94a3b8', fontSize: '14px' }}>Library Completion</h3>
+                <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '14px' }}>
+                  {((stats.finishedBooks / stats.totalBooks) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div style={{ width: '100%', height: '20px', backgroundColor: '#0f172a', borderRadius: '10px', overflow: 'hidden', marginTop: '10px' }}>
+                <div style={{ 
+                  width: `${(stats.finishedBooks / stats.totalBooks) * 100}%`, 
+                  height: '100%', 
+                  backgroundColor: '#10b981',
+                  transition: 'width 1s ease-out' 
+                }} className="animate-flow" // This triggers the liquid movement 
+                />
+              </div>
+            </div>
+
+            {/* Top Authors Section */}
+            <div style={{ gridColumn: '1 / -1', backgroundColor: '#1e293b', padding: '20px', borderRadius: '12px', border: '1px solid #334155' }}>
+              <h3 style={{ marginTop: 0, color: '#94a3b8', fontSize: '14px', marginBottom: '15px' }}>Top Authors in Library</h3>
+              <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                {topAuthors.map(([name, count], i) => (
+                  <div key={name} style={{ 
+                    flex: 1, 
+                    minWidth: '150px',
+                    backgroundColor: '#0f172a', 
+                    padding: '15px', 
+                    borderRadius: '8px', 
+                    borderLeft: `4px solid ${i === 0 ? '#10b981' : '#334155'}` 
+                  }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>#{i + 1}</p>
+                    <p style={{ margin: '5px 0', fontWeight: 'bold', color: 'white' }}>{name}</p>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#10b981' }}>{count} Books</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* 📚 BOOK SHELF VIEW (Moved inside this fragment) */
+          <>
+            {/* View Controls: Search & Sort */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '30px' }}>
+              <input 
+                type="text"
+                placeholder={`Search in ${activeTab}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 20px',
+                  borderRadius: '8px',
+                  border: '1px solid #334155',
+                  backgroundColor: '#1e293b',
+                  color: 'white',
+                  fontSize: '14px'
+                }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <label style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 'bold' }}>Sort By:</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => handleSortChange(e.target.value)}
+                  style={{
+                    padding: '8px 12px 8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #334155',
+                    backgroundColor: '#1e293b',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    minWidth: '160px',
+                    appearance: 'none'
+                  }}
+                >
+                  <option value="Newest">Date Added</option>
+                  <option value="Title">Title (A-Z)</option>
+                  <option value="Author">Author (A-Z)</option>
+                  <option value="Progress">Progress %</option>
+                  <option value="Series">Series</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '25px' }}>
+              {books
+                .filter(b => b.status === activeTab)
+                .filter(b => 
+                  b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                  b.author.toLowerCase().includes(searchQuery.toLowerCase())
+                ).sort((a, b) => {
+                  if (sortBy === 'Title') {
+                    return a.title.localeCompare(b.title);
+                  }
+                  if (sortBy === 'Author') {
+                    return a.author.localeCompare(b.author);
+                  }
+                  if (sortBy === 'Progress') {
+                    const progA = a.totalPages > 0 ? a.currentPage / a.totalPages : 0;
+                    const progB = b.totalPages > 0 ? b.currentPage / b.totalPages : 0;
+                    return progB - progA; // Highest progress first
+                  }
+                  if (sortBy === 'Series') {
+                    if (a.series === b.series) {
+                      return a.seriesOrder - b.seriesOrder;
+                    }
+                    return (a.series || '').localeCompare(b.series || '');
+                  }
+                  // Default: 'Newest' (assuming ID is based on timestamp)
+                  return parseInt(b.id) - parseInt(a.id);
+                })
+                .map(book => (
+                <div 
+                  key={book.id} 
+                  style={{ 
+                    backgroundColor: '#1e293b', 
+                    borderRadius: '8px', 
+                    border: '1px solid #334155', 
+                    position: 'relative',
+                    display: 'flex', // New flex layout
+                    overflow: 'hidden',
+                    minHeight: '180px'
+                  }}
+                >
+
+                  {/* Left: Cover Art */}
+                    <div style={{ 
+                      width: '120px',
+                      flexShrink: 0,
+                      backgroundColor: '#0f172a',
+                      overflow: 'hidden' 
+                    }}>
+                      {book.coverUrl ? (
+                        <img 
+                          src={book.coverUrl} 
+                          referrerPolicy="no-referrer"
+                          style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'cover',
+                            display: 'block'
+                          }} 
+                          alt={book.title}
+                        />
+                      ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#334155', fontSize: '10px' }}>
+                        No Cover
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Content */}
+                  <div style={{ flex: 1, padding: '15px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ marginBottom: '10px' }}>
+                      <h3 style={{ margin: '0 0 5px 0', fontSize: '18px' }}>{book.title}</h3>
+                      
+                      {/* Series Indicator: Below Title, Above Author */}
+                      {book.series && (
+                        <p style={{ 
+                          margin: '0 0 5px 0', 
+                          fontSize: '11px', 
+                          color: '#34d399', 
+                          fontWeight: 'bold',
+                          textTransform: 'uppercase', 
+                          letterSpacing: '0.5px' 
+                        }}>
+                          {book.series} {book.seriesOrder ? `— Vol. ${book.seriesOrder}` : ''}
+                        </p>
+                      )}
+                      
+                      <p style={{ margin: 0, color: '#94a3b8', fontSize: '13px' }}>{book.author}</p>
+                    </div>
+                  
+                    {/* Sentiment Badge */}
+                    {book.sentiment && (
+                      <span style={{ 
+                        fontSize: '10px', 
+                        padding: '2px 8px', 
+                        borderRadius: '10px', 
+                        backgroundColor: '#334155',
+                        color: book.sentiment === 'Loved' ? '#f472b6' : '#94a3b8',
+                        display: 'inline-block', // Ensures it only takes required width
+                        width: 'fit-content'
+                      }}>
+                        {book.sentiment}
+                      </span>
+                    )}
+                    {/* Inside the book card, below the author/sentiment */}
+                    {activeTab === 'Finished' && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px', fontSize: '10px', color: '#64748b' }}>
+                        <span>⭐ ENJ: {book.enjoyment}</span>
+                        <span>❤️ EMO: {book.emotionalImpact}</span>
+                        <span>💪 EFF: {book.effort}</span>
+                        <span>🔄 RRD: {book.rereadPotential}</span>
+                      </div>
+                    )}
+                    {/* The Delete Button */}
+                    {/* Right-aligned Ellipses Menu */}
+                    <div style={{ position: 'absolute', top: '10px', right: '10px' }} onClick={(e) => e.stopPropagation()}>
+                      <button 
+                        onClick={() => setOpenMenuId(openMenuId === book.id ? null : book.id)}
+                        style={{ 
+                          background: 'none', 
+                          border: 'none', 
+                          color: '#94a3b8', 
+                          fontSize: '20px', 
+                          cursor: 'pointer',
+                          padding: '0 5px',
+                          lineHeight: '1'
+                        }}
+                      >
+                        ⋮
+                      </button>
+
+                      {openMenuId === book.id && (
+                        <div style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: '25px',
+                          backgroundColor: '#1e293b',
+                          border: '1px solid #334155',
+                          borderRadius: '6px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
+                          zIndex: 10,
+                          minWidth: '100px',
+                          overflow: 'hidden'
+                        }}>
+                          <button 
+                            onClick={() => { handleEdit(book); setOpenMenuId(null); }}
+                            style={{ 
+                              display: 'block', width: '100%', padding: '10px', textAlign: 'left',
+                              background: 'none', border: 'none', color: '#34d399', fontSize: '12px',
+                              fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            ✎ EDIT
+                          </button>
+                          <button 
+                            onClick={() => { 
+                              setBookToDelete(book); 
+                              setIsDeleteModalOpen(true); 
+                              setOpenMenuId(null); 
+                            }}
+                            style={{ 
+                              display: 'block', width: '100%', padding: '10px', textAlign: 'left',
+                              background: 'none', border: 'none', color: '#ef4444', fontSize: '12px',
+                              fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            🗑 DELETE
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ marginTop: '15px', borderTop: '1px solid #334155', paddingTop: '10px' }}>
+                      {activeTab === 'Planned' && (
+                        <button onClick={() => moveBook(book, 'Reading')} style={moveButtonStyle}>Start Reading →</button>
+                      )}
+                      {activeTab === 'Reading' && (
+                        <button 
+                          onClick={() => moveBook(book, 'Finished')} 
+                          style={{ 
+                            ...moveButtonStyle, 
+                            // Highlight logic
+                            border: book.currentPage >= book.totalPages && book.totalPages > 0 
+                              ? '2px solid #34d399' 
+                              : '1px solid #334155',
+                            boxShadow: book.currentPage >= book.totalPages && book.totalPages > 0 
+                              ? '0 0 10px rgba(52, 211, 153, 0.4)' 
+                              : 'none',
+                            transition: 'all 0.3s ease'
+                          }}
+                        >
+                          FINISH BOOK ✓
+                        </button>
+                      )}
+                      {/* Add a "Drop" option for anything not already dropped */}
+                      {activeTab !== 'Dropped' && activeTab !== 'Finished' && (
+                        <button 
+                          onClick={() => moveBook(book, 'Dropped')} 
+                          style={{ 
+                            ...moveButtonStyle, 
+                            color: '#ef4444', 
+                            borderColor: '#ef4444', // Red border
+                            backgroundColor: 'transparent' 
+                          }}
+                        >
+                          Drop
+                        </button>
+                      )}
+                      {activeTab === 'Reading' && (
+                        <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <button 
+                            onClick={() => {
+                              setProgressUpdateBook(book);
+                              setTempPage(book.currentPage || 0);
+                              setIsProgressModalOpen(true);
+                            }}
+                            style={{ background: '#1e293b', border: '1px solid #334155', color: '#34d399', borderRadius: '4px', cursor: 'pointer', padding: '4px 8px', fontSize: '10px', fontWeight: 'bold' }}
+                          >
+                            UPDATE PG
+                          </button>
+                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                            Pg {book.currentPage} / {book.totalPages}
+                          </span>
+                        </div>
+                      )}
+                      {/* NEW: Re-read logic for Finished books */}
+                      {activeTab === 'Finished' && (
+                        <button onClick={() => moveBook(book, 'Reading')} style={{ ...moveButtonStyle, color: '#60a5fa' }}>Re-Read</button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar for Reading Tab */}
+                  {activeTab === 'Reading' && book.totalPages > 0 && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      bottom: 0, 
+                      left: 0, 
+                      width: '100%', 
+                      height: '4px', 
+                      backgroundColor: '#334155', 
+                      borderRadius: '0 0 8px 8px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ 
+                        width: `${Math.min((book.currentPage / book.totalPages) * 100, 100)}%`, 
+                        height: '100%', 
+                        backgroundColor: '#10b981',
+                        transition: 'width 0.5s ease-out' // The "animated" part
+                      }} />
+                    </div>
+                  )}
+                </div>
+                
+                
+              ))}
+              
+              {/* Show placeholder only if the current tab is empty */}
+              {books.filter(b => b.status === activeTab).length === 0 && (
+                <p style={{ color: '#94a3b8' }}>Your {activeTab} shelf is currently empty.</p>
+              )}
+            </div>
+          </>
+        )}
       </main>
 
       {/* NEW: ADD BOOK MODAL */}
@@ -1022,7 +1122,7 @@ const App: React.FC = () => {
 
           {/* Inside the modal, after the Author input */}
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
               <button 
                 onClick={fetchBookMetadata}
                 disabled={isSearching} // Disable while searching
@@ -1041,6 +1141,39 @@ const App: React.FC = () => {
               >
                 {isSearching ? '⏳ Searching...' : '🔍 Search for Book Data'}
               </button>
+              {/* NEW: Upload Custom Cover Button */}
+              <button 
+                onClick={async () => {
+                  // @ts-ignore
+                  const filePath = await window.api.selectImage();
+                  if (filePath) {
+                    // We prefix with 'file://' so Electron can load local files
+                    const localUrl = `atom:///${filePath}`;
+                    setFormData(prev => ({ ...prev, coverUrl: localUrl }));
+                  }
+                }}
+                type="button"
+                style={{ 
+                  width: '100%', 
+                  padding: '10px', 
+                  backgroundColor: isSearching ? '#1e293b' : '#334155', 
+                  color: isSearching ? '#64748b' : 'white', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  cursor: isSearching ? 'not-allowed' : 'pointer', 
+                  fontSize: '12px', 
+                  fontWeight: 'bold' 
+                }}
+              >
+                📁 Upload Custom Cover
+              </button>
+              <input 
+                name="coverUrl"
+                value={formData.coverUrl}
+                onChange={handleInputChange}
+                placeholder="Or paste an image URL here..."
+                style={{ ...inputStyle, fontSize: '11px', marginTop: '5px' }}
+              />
             </div>
             
             {formData.coverUrl && (

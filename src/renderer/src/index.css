@@ -30,3 +30,19 @@ input:focus, textarea:focus {
   background-color: #020617 !important;
   transition: all 0.2s ease-in-out;
 }
+
+@keyframes flow {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+
+.animate-flow {
+  background: linear-gradient(
+    90deg, 
+    #10b981 0%, 
+    #34d399 50%, 
+    #10b981 100%
+  );
+  background-size: 200% 100%;
+  animation: flow 2s linear infinite;
+}

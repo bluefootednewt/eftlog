@@ -8,8 +8,9 @@ const api = {
   getBooks: () => ipcRenderer.invoke('get-books'),
   deleteBook: (bookId) => ipcRenderer.invoke('delete-book', bookId),
   saveAllBooks: (allBooks) => ipcRenderer.invoke('save-all-books', allBooks),
-  getConfig: () => ipcRenderer.invoke('get-config'), // Add this line
-  saveConfig: (config) => ipcRenderer.send('save-config', config)
+  getConfig: () => ipcRenderer.invoke('get-config'),
+  saveConfig: (config) => ipcRenderer.send('save-config', config),
+  selectImage: () => ipcRenderer.invoke('select-image'),
 }
 
 // Keep the rest of your file exactly as it is (the if/else block)
