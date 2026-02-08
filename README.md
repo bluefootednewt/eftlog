@@ -40,7 +40,7 @@ EftLog is a streamlined desktop application built with **Electron** and **React*
 
 ## Downloads
 
-**Latest Release: [v0.2.0-alpha](https://github.com/bluefootednewt/eft-log/releases)**
+**Latest Release: [v0.2.0-alpha](https://github.com/bluefootednewt/eftlog/releases)**
 
 📝 Notes
 
