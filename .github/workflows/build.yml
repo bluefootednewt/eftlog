@@ -1,0 +1,32 @@
+name: Build/Release EftLog
+on:
+  push:
+    tags:
+      - 'v*' # Triggers when you push a tag like v0.2.0
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # Runs on both Windows and Ubuntu to get both file types
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build/Release Electron App
+        uses: samuelmeuli/action-electron-builder@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # This automatically creates a GitHub Release and uploads the files
+          release: true
