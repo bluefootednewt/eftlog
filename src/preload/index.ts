@@ -11,6 +11,8 @@ const api = {
   getConfig: () => ipcRenderer.invoke('get-config'),
   saveConfig: (config) => ipcRenderer.send('save-config', config),
   selectImage: () => ipcRenderer.invoke('select-image'),
+  selectDigitalBook: () => ipcRenderer.invoke('select-digital-book'),
+  openFile: (path) => ipcRenderer.send('open-file', path)
 }
 
 // Keep the rest of your file exactly as it is (the if/else block)

@@ -18,7 +18,8 @@ const App: React.FC = () => {
     totalPages: 0,
     coverUrl: '',
     series: '',
-    seriesOrder: 1
+    seriesOrder: 1,
+    filePath: ''
   })
   const [editingBookId, setEditingBookId] = useState<string | null>(null)
   const [showDetailedRatings, setShowDetailedRatings] = useState(false)
@@ -89,7 +90,8 @@ const App: React.FC = () => {
         totalPages: formData.totalPages,
         coverUrl: formData.coverUrl,
         series: formData.series,
-        seriesOrder: formData.seriesOrder
+        seriesOrder: formData.seriesOrder,
+        filePath: formData.filePath
       }
 
       if (editingBookId) {
@@ -121,7 +123,8 @@ const App: React.FC = () => {
         totalPages: 0,
         coverUrl: '',
         series: '',
-        seriesOrder: 1
+        seriesOrder: 1,
+        filePath: ''
       })
       setEditingBookId(null)
       setIsModalOpen(false)
@@ -141,7 +144,8 @@ const App: React.FC = () => {
       totalPages: book.totalPages,
       coverUrl: book.coverUrl,
       series: book.series,
-      seriesOrder: book.seriesOrder
+      seriesOrder: book.seriesOrder,
+      filePath: book.filePath || ''
     })
     setEditingBookId(book.id)
     setIsModalOpen(true)
@@ -289,7 +293,8 @@ const App: React.FC = () => {
         totalPages: book.totalPages,
         coverUrl: book.coverUrl,
         series: book.series,
-        seriesOrder: book.seriesOrder
+        seriesOrder: book.seriesOrder,
+        filePath: book.filePath
       })
       setEditingBookId(book.id)
       setIsModalOpen(true)
@@ -687,7 +692,8 @@ const App: React.FC = () => {
                   title: '', author: '', sentiment: '', status: '', 
                   enjoyment: 0, emotionalImpact: 0, effort: 0, rereadPotential: 0, 
                   notes: '', currentPage: 0, totalPages: 0, coverUrl: '', 
-                  series: '', seriesOrder: 1
+                  series: '', seriesOrder: 1,
+                  filePath: ''
                 });
                 setIsModalOpen(true);
               }} 
@@ -982,44 +988,73 @@ const App: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <div style={{ marginTop: '15px', borderTop: '1px solid #334155', paddingTop: '10px' }}>
-                      {activeTab === 'Planned' && (
-                        <button onClick={() => moveBook(book, 'Reading')} style={moveButtonStyle}>Start Reading →</button>
-                      )}
+                    <div style={{ marginTop: 'auto', borderTop: '1px solid #334155', paddingTop: '10px' }}>
+                      {/* Row 1: Primary Actions */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {activeTab === 'Planned' && (
+                            <button onClick={() => moveBook(book, 'Reading')} style={moveButtonStyle}>
+                              Start Reading →
+                            </button>
+                          )}
+                          
+                          {/* 📖 Compact READ NOW button */}
+                          {book.filePath && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // @ts-ignore
+                                window.api.openFile(book.filePath);
+                              }}
+                              title="Open in default reader"
+                              style={{ 
+                                ...moveButtonStyle, 
+                                backgroundColor: '#1e3a8a', 
+                                color: '#93c5fd', 
+                                borderColor: '#3b82f6',
+                                margin: 0 // Remove the auto-margin to stay in line
+                              }}
+                            >
+                              📖 READ NOW
+                            </button>
+                          )}
+
+                          {activeTab === 'Reading' && (
+                            <button 
+                              onClick={() => moveBook(book, 'Finished')} 
+                              style={{ 
+                                ...moveButtonStyle, 
+                                margin: 0,
+                                border: book.currentPage >= book.totalPages && book.totalPages > 0 
+                                  ? '2px solid #34d399' : '1px solid #334155',
+                                boxShadow: book.currentPage >= book.totalPages && book.totalPages > 0 
+                                  ? '0 0 10px rgba(52, 211, 153, 0.4)' : 'none'
+                              }}
+                            >
+                              ✓ FINISH
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Right Aligned: Drop/Re-read */}
+                        {activeTab !== 'Dropped' && activeTab !== 'Finished' && (
+                          <button 
+                            onClick={() => moveBook(book, 'Dropped')} 
+                            style={{ ...moveButtonStyle, color: '#ef4444', borderColor: '#ef4444', margin: 0 }}
+                          >
+                            Drop
+                          </button>
+                        )}
+                        {activeTab === 'Finished' && (
+                          <button onClick={() => moveBook(book, 'Reading')} style={{ ...moveButtonStyle, color: '#60a5fa', margin: 0 }}>
+                            Re-Read
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Row 2: Progress Utilities (Only for Reading) */}
                       {activeTab === 'Reading' && (
-                        <button 
-                          onClick={() => moveBook(book, 'Finished')} 
-                          style={{ 
-                            ...moveButtonStyle, 
-                            // Highlight logic
-                            border: book.currentPage >= book.totalPages && book.totalPages > 0 
-                              ? '2px solid #34d399' 
-                              : '1px solid #334155',
-                            boxShadow: book.currentPage >= book.totalPages && book.totalPages > 0 
-                              ? '0 0 10px rgba(52, 211, 153, 0.4)' 
-                              : 'none',
-                            transition: 'all 0.3s ease'
-                          }}
-                        >
-                          FINISH BOOK ✓
-                        </button>
-                      )}
-                      {/* Add a "Drop" option for anything not already dropped */}
-                      {activeTab !== 'Dropped' && activeTab !== 'Finished' && (
-                        <button 
-                          onClick={() => moveBook(book, 'Dropped')} 
-                          style={{ 
-                            ...moveButtonStyle, 
-                            color: '#ef4444', 
-                            borderColor: '#ef4444', // Red border
-                            backgroundColor: 'transparent' 
-                          }}
-                        >
-                          Drop
-                        </button>
-                      )}
-                      {activeTab === 'Reading' && (
-                        <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <button 
                             onClick={() => {
                               setProgressUpdateBook(book);
@@ -1034,10 +1069,6 @@ const App: React.FC = () => {
                             Pg {book.currentPage} / {book.totalPages}
                           </span>
                         </div>
-                      )}
-                      {/* NEW: Re-read logic for Finished books */}
-                      {activeTab === 'Finished' && (
-                        <button onClick={() => moveBook(book, 'Reading')} style={{ ...moveButtonStyle, color: '#60a5fa' }}>Re-Read</button>
                       )}
                     </div>
                   </div>
@@ -1174,6 +1205,51 @@ const App: React.FC = () => {
                 placeholder="Or paste an image URL here..."
                 style={{ ...inputStyle, fontSize: '11px', marginTop: '5px' }}
               />
+              {/* Digital File Linker */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '10px' }}>
+                <button 
+                  onClick={async () => {
+                    try {
+                      // @ts-ignore - Calls the bridge function we just fixed
+                      const path = await window.api.selectDigitalBook();
+                      if (path) {
+                        setFormData(prev => ({ ...prev, filePath: path }));
+                      }
+                    } catch (err) {
+                      console.error("Failed to select digital book:", err);
+                    }
+                  }}
+                  type="button"
+                  style={{ 
+                    width: '100%', 
+                    padding: '10px', 
+                    backgroundColor: '#1e293b', 
+                    color: '#60a5fa', 
+                    border: '1px solid #60a5fa', 
+                    borderRadius: '4px', 
+                    cursor: 'pointer', 
+                    fontSize: '12px', 
+                    fontWeight: 'bold' 
+                  }}
+                >
+                  📂 Link Digital File (.epub, .cbz)
+                </button>
+                
+                {/* Show the linked path so you know it worked */}
+                {formData.filePath && (
+                  <p style={{ 
+                    fontSize: '10px', 
+                    color: '#94a3b8', 
+                    marginTop: '8px', 
+                    wordBreak: 'break-all',
+                    backgroundColor: '#0f172a',
+                    padding: '5px',
+                    borderRadius: '4px'
+                  }}>
+                    📍 {formData.filePath}
+                  </p>
+                )}
+              </div>
             </div>
             
             {formData.coverUrl && (
@@ -1279,7 +1355,7 @@ const App: React.FC = () => {
               onClick={() => {
                 setIsModalOpen(false);
                 setEditingBookId(null);
-                setFormData({ title: '', author: '', sentiment: '', status: '' , enjoyment: 0, emotionalImpact: 0, effort: 0, rereadPotential: 0, notes: '', currentPage: 0, totalPages: 0, coverUrl: '', series: '', seriesOrder: 1});
+                setFormData({ title: '', author: '', sentiment: '', status: '' , enjoyment: 0, emotionalImpact: 0, effort: 0, rereadPotential: 0, notes: '', currentPage: 0, totalPages: 0, coverUrl: '', series: '', seriesOrder: 1, filePath: ''});
               }}
               style={{ flex: 1, padding: '12px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: '#334155', color: 'white' }}
             >

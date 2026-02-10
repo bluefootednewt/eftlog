@@ -215,3 +215,20 @@ ipcMain.handle('select-image', async () => {
   }
   return null
 })
+
+ipcMain.handle('select-digital-book', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'Digital Books', extensions: ['epub', 'cbz', 'pdf', 'cbr', 'mobi'] }
+    ]
+  })
+  return result.canceled ? null : result.filePaths[0]
+})
+
+ipcMain.on('open-file', (_event, filePath) => {
+  if (filePath) {
+    // shell.openPath is the magic command to use the default system app
+    shell.openPath(filePath)
+  }
+})
