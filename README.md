@@ -1,4 +1,7 @@
 ### EftLog 📚
+
+![EftLog Logo](./src/renderer/public/splash.png)
+
 **Personal Reading Catalog & Progress Tracker**
 
 EftLog is a streamlined desktop application built with **Electron** and **React** designed to help readers catalog their personal libraries, track reading progress in real-time, and store detailed sentiments on completed books.
