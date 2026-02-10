@@ -39,7 +39,7 @@ EftLog is a streamlined desktop application built with **Electron** and **React*
 ### Getting Started
 
 ## Prerequisites
-* A Google Books API Key
+* A Google Books API Key (optional, for pulling down book metadata which can be entered manually)
 
 ## Downloads
 
