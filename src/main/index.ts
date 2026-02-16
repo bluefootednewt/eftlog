@@ -23,9 +23,8 @@ function createWindows(): void {
   })
 
   // Points to the compiled version in the 'out' folder
-  splash.loadFile(join(__dirname, '../renderer/splash.html'))
-  splash.once('ready-to-show', () => splash.show())
-
+  // splash.loadFile(join(__dirname, '../renderer/splash.html'))
+  
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1280,
@@ -49,10 +48,15 @@ function createWindows(): void {
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    splash.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/splash.html`)
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
+    // In production, 'out/renderer' is usually flattened or relative to the join
+    splash.loadFile(join(__dirname, '../renderer/splash.html'))
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  splash.once('ready-to-show', () => splash.show())
 
   // 3. The Hand-off
   mainWindow.once('ready-to-show', () => {
