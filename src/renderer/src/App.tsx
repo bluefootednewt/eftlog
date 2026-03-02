@@ -311,29 +311,44 @@ const App: React.FC = () => {
 
   const StarRating = ({ label, value, name }: { label: string, value: number, name: string }) => {
     const [isDragging, setIsDragging] = useState(false)
+    const starsTrackRef = React.useRef<HTMLDivElement | null>(null)
 
-    useEffect(() => {
-      const stopDragging = () => setIsDragging(false)
-      window.addEventListener('pointerup', stopDragging)
-      return () => window.removeEventListener('pointerup', stopDragging)
-    }, [])
+    const getRatingFromPointer = (clientX: number) => {
+      const track = starsTrackRef.current
+      if (!track) return value
 
-    const setRatingFromPointer = (star: number, clientX: number, target: HTMLDivElement) => {
-      const rect = target.getBoundingClientRect()
-      const isRightHalf = clientX - rect.left >= rect.width / 2
-      const nextValue = isRightHalf ? star : star - 0.5
+      const rect = track.getBoundingClientRect()
+
+      if (clientX <= rect.left) return 0
+      if (clientX >= rect.right) return 5
+
+      const position = (clientX - rect.left) / rect.width
+      const halfStep = Math.ceil(position * 10)
+      return Math.min(5, Math.max(0.5, halfStep / 2))
+    }
+
+    const updateRatingFromPointer = (clientX: number) => {
+      const nextValue = getRatingFromPointer(clientX)
       setFormData(prev => ({ ...prev, [name]: nextValue }))
     }
 
-    const handlePointerDown = (star: number, e: React.PointerEvent<HTMLDivElement>) => {
+    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault()
       setIsDragging(true)
-      setRatingFromPointer(star, e.clientX, e.currentTarget)
+      e.currentTarget.setPointerCapture(e.pointerId)
+      updateRatingFromPointer(e.clientX)
     }
 
-    const handlePointerMove = (star: number, e: React.PointerEvent<HTMLDivElement>) => {
+    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
       if (!isDragging) return
-      setRatingFromPointer(star, e.clientX, e.currentTarget)
+      updateRatingFromPointer(e.clientX)
+    }
+
+    const stopDragging = (e: React.PointerEvent<HTMLDivElement>) => {
+      setIsDragging(false)
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      }
     }
 
     return (
@@ -342,18 +357,19 @@ const App: React.FC = () => {
           {label}: {value} Stars
         </label>
         <div style={{ display: 'flex', alignItems: 'center', userSelect: 'none', WebkitUserSelect: 'none' }}>
-          {[1, 2, 3, 4, 5].map((star) => (
-            <div
-              key={star}
-              onPointerDown={(e) => handlePointerDown(star, e)}
-              onPointerMove={(e) => handlePointerMove(star, e)}
-              onPointerEnter={(e) => handlePointerMove(star, e)}
-              onDragStart={(e) => e.preventDefault()}
-              style={{ position: 'relative', display: 'inline-block', touchAction: 'none' }}
-            >
-              <span style={getStarStyle(star, value)}>★</span>
-            </div>
-          ))}
+          <div
+            ref={starsTrackRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={stopDragging}
+            onPointerCancel={stopDragging}
+            onDragStart={(e) => e.preventDefault()}
+            style={{ display: 'flex', touchAction: 'none', cursor: 'pointer' }}
+          >
+            {[1, 2, 3, 4, 5].map((star) => (
+              <span key={star} style={getStarStyle(star, value)}>★</span>
+            ))}
+          </div>
           <button
             onClick={() => setFormData(prev => ({ ...prev, [name]: 0 }))}
             style={{ background: 'none', border: 'none', color: '#475569', fontSize: '10px', marginLeft: '10px', cursor: 'pointer' }}
