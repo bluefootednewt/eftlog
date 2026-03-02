@@ -310,32 +310,51 @@ const App: React.FC = () => {
   }
 
   const StarRating = ({ label, value, name }: { label: string, value: number, name: string }) => {
+    const [isDragging, setIsDragging] = useState(false)
+
+    useEffect(() => {
+      const stopDragging = () => setIsDragging(false)
+      window.addEventListener('pointerup', stopDragging)
+      return () => window.removeEventListener('pointerup', stopDragging)
+    }, [])
+
+    const setRatingFromPointer = (star: number, clientX: number, target: HTMLDivElement) => {
+      const rect = target.getBoundingClientRect()
+      const isRightHalf = clientX - rect.left >= rect.width / 2
+      const nextValue = isRightHalf ? star : star - 0.5
+      setFormData(prev => ({ ...prev, [name]: nextValue }))
+    }
+
+    const handlePointerDown = (star: number, e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      setIsDragging(true)
+      setRatingFromPointer(star, e.clientX, e.currentTarget)
+    }
+
+    const handlePointerMove = (star: number, e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDragging) return
+      setRatingFromPointer(star, e.clientX, e.currentTarget)
+    }
+
     return (
       <div style={{ marginBottom: '15px' }}>
         <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
           {label}: {value} Stars
         </label>
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', alignItems: 'center', userSelect: 'none', WebkitUserSelect: 'none' }}>
           {[1, 2, 3, 4, 5].map((star) => (
-            <div key={star} style={{ position: 'relative', display: 'inline-block' }}>
-              {/* The Star Icon */}
+            <div
+              key={star}
+              onPointerDown={(e) => handlePointerDown(star, e)}
+              onPointerMove={(e) => handlePointerMove(star, e)}
+              onPointerEnter={(e) => handlePointerMove(star, e)}
+              onDragStart={(e) => e.preventDefault()}
+              style={{ position: 'relative', display: 'inline-block', touchAction: 'none' }}
+            >
               <span style={getStarStyle(star, value)}>★</span>
-              
-              {/* Left half hit zone */}
-              <div 
-                onClick={() => setFormData(prev => ({ ...prev, [name]: star - 0.5 }))}
-                style={{ position: 'absolute', left: 0, top: 0, width: '50%', height: '100%', cursor: 'pointer' }} 
-              />
-              
-              {/* Right half hit zone */}
-              <div 
-                onClick={() => setFormData(prev => ({ ...prev, [name]: star }))}
-                style={{ position: 'absolute', right: 0, top: 0, width: '50%', height: '100%', cursor: 'pointer' }} 
-              />
             </div>
           ))}
-          {/* Reset button to go back to 0 */}
-          <button 
+          <button
             onClick={() => setFormData(prev => ({ ...prev, [name]: 0 }))}
             style={{ background: 'none', border: 'none', color: '#475569', fontSize: '10px', marginLeft: '10px', cursor: 'pointer' }}
           >
@@ -343,8 +362,8 @@ const App: React.FC = () => {
           </button>
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   const [isSearching, setIsSearching] = useState(false); 
 
