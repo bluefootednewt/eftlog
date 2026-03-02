@@ -310,32 +310,67 @@ const App: React.FC = () => {
   }
 
   const StarRating = ({ label, value, name }: { label: string, value: number, name: string }) => {
+    const [isDragging, setIsDragging] = useState(false)
+    const starsTrackRef = React.useRef<HTMLDivElement | null>(null)
+
+    const getRatingFromPointer = (clientX: number) => {
+      const track = starsTrackRef.current
+      if (!track) return value
+
+      const rect = track.getBoundingClientRect()
+
+      if (clientX <= rect.left) return 0
+      if (clientX >= rect.right) return 5
+
+      const position = (clientX - rect.left) / rect.width
+      const halfStep = Math.ceil(position * 10)
+      return Math.min(5, Math.max(0.5, halfStep / 2))
+    }
+
+    const updateRatingFromPointer = (clientX: number) => {
+      const nextValue = getRatingFromPointer(clientX)
+      setFormData(prev => ({ ...prev, [name]: nextValue }))
+    }
+
+    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      setIsDragging(true)
+      e.currentTarget.setPointerCapture(e.pointerId)
+      updateRatingFromPointer(e.clientX)
+    }
+
+    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDragging) return
+      updateRatingFromPointer(e.clientX)
+    }
+
+    const stopDragging = (e: React.PointerEvent<HTMLDivElement>) => {
+      setIsDragging(false)
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      }
+    }
+
     return (
       <div style={{ marginBottom: '15px' }}>
         <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
           {label}: {value} Stars
         </label>
-        <div style={{ display: 'flex' }}>
-          {[1, 2, 3, 4, 5].map((star) => (
-            <div key={star} style={{ position: 'relative', display: 'inline-block' }}>
-              {/* The Star Icon */}
-              <span style={getStarStyle(star, value)}>★</span>
-              
-              {/* Left half hit zone */}
-              <div 
-                onClick={() => setFormData(prev => ({ ...prev, [name]: star - 0.5 }))}
-                style={{ position: 'absolute', left: 0, top: 0, width: '50%', height: '100%', cursor: 'pointer' }} 
-              />
-              
-              {/* Right half hit zone */}
-              <div 
-                onClick={() => setFormData(prev => ({ ...prev, [name]: star }))}
-                style={{ position: 'absolute', right: 0, top: 0, width: '50%', height: '100%', cursor: 'pointer' }} 
-              />
-            </div>
-          ))}
-          {/* Reset button to go back to 0 */}
-          <button 
+        <div style={{ display: 'flex', alignItems: 'center', userSelect: 'none', WebkitUserSelect: 'none' }}>
+          <div
+            ref={starsTrackRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={stopDragging}
+            onPointerCancel={stopDragging}
+            onDragStart={(e) => e.preventDefault()}
+            style={{ display: 'flex', touchAction: 'none', cursor: 'pointer' }}
+          >
+            {[1, 2, 3, 4, 5].map((star) => (
+              <span key={star} style={getStarStyle(star, value)}>★</span>
+            ))}
+          </div>
+          <button
             onClick={() => setFormData(prev => ({ ...prev, [name]: 0 }))}
             style={{ background: 'none', border: 'none', color: '#475569', fontSize: '10px', marginLeft: '10px', cursor: 'pointer' }}
           >
@@ -343,8 +378,8 @@ const App: React.FC = () => {
           </button>
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   const [isSearching, setIsSearching] = useState(false); 
 
